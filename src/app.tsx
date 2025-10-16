@@ -65,7 +65,28 @@ const sessionTimeline = [
   { t: 6.0, stage: 1, hr: 59 }, { t: 6.5, stage: 3, hr: 60 },
   { t: 7.0, stage: 1, hr: 61 }, { t: 7.5, stage: 0, hr: 65 }
 ];
-const stageName = (s:number) => s===0?"Awake": s===1?"Light": s===2?"Deep":"REM";
+
+// Etiquetas nuevas para el eje Y del hipnograma
+const stageLabel = (s:number) =>
+  s===0 ? "Vigilia"
+: s===1 ? "REM"
+: s===2 ? "NRM1"
+: s===3 ? "NRM2"
+: s===4 ? "NRM3"
+: "";
+
+// Transformación del valor de etapa original -> nueva escala
+// Original: 0=Awake, 1=Light, 2=Deep, 3=REM
+// Nueva:    0=Vigilia, 1=REM, 2=No REM 1, 3=No REM 2, 4=No REM
+const toNewStage = (old:number) => {
+  switch (old) {
+    case 0: return 0;         // Awake -> Vigilia
+    case 1: return 2;         // Light -> No REM 1
+    case 2: return 3;         // Deep  -> No REM 2
+    case 3: return 1;         // REM   -> REM
+    default: return 0;
+  }
+};
 
 function kpi(colorClass:string, label:string, value:string) {
   return (
@@ -213,6 +234,12 @@ export default function App() {
   const trendData = useMemo(() =>
     nights.map(n => ({ date: n.date.slice(5), duration: n.duration, score: n.sleepScore, hrv: n.hrv })), []);
 
+  // Dataset transformado para el primer gráfico con las nuevas etiquetas
+  const hypnoData = useMemo(
+    () => sessionTimeline.map(p => ({ t: p.t, stage: toNewStage(p.stage), hr: p.hr })),
+    []
+  );
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-indigo-50 text-slate-900 p-6">
       <div className="max-w-6xl mx-auto">
@@ -249,14 +276,12 @@ export default function App() {
                   <div className="text-xs text-gray-500">Última noche ({selected.date})</div>
                 </div>
                 <ResponsiveContainer width="100%" height={260}>
-                  <AreaChart data={sessionTimeline.map(p=>({t:p.t, stage:p.stage, hr:p.hr}))} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <AreaChart data={hypnoData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="t" tickFormatter={(v)=>`${v}h`} />
-                    <YAxis yAxisId="left" domain={[0,3]} tickFormatter={(v)=>stageName(v)} allowDecimals={false} />
-                    <YAxis yAxisId="right" orientation="right" />
-                    <Tooltip formatter={(v, name) => name === "stage" ? stageName(Number(v)) : (v as any)} labelFormatter={(l)=>`${l}h`} />
+                    <YAxis yAxisId="left" domain={[0,4]} tickFormatter={(v)=>stageLabel(v)} allowDecimals={false} />
+                    <Tooltip formatter={(v, name) => name === "stage" ? stageLabel(Number(v)) : (v as any)} labelFormatter={(l)=>`${l}h`} />
                     <Area yAxisId="left" type="monotone" dataKey="stage" name="Fase" fillOpacity={0.2} />
-                    <Line yAxisId="right" type="monotone" dataKey="hr" name="FC" dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </CardContent></Card>
@@ -278,24 +303,7 @@ export default function App() {
                 </ResponsiveContainer>
               </CardContent></Card>
 
-              <Card className="lg:col-span-2"><CardContent>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-semibold">Tendencia semanal</h3>
-                  <div className="text-xs text-gray-500">Duración (h), puntuación y HRV</div>
-                </div>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="duration" name="Horas" dot={false} />
-                    <Line type="monotone" dataKey="score" name="Puntuación" dot={false} />
-                    <Line type="monotone" dataKey="hrv" name="HRV" dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent></Card>
+              {/* ← Eliminada la última gráfica de “Tendencia semanal” en el Resumen */}
             </div>
           </TabsContent>
 
